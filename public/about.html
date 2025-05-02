@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About This App</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+  <link href="css/styles.css" rel="stylesheet">
+</head>
+<body>
+  <nav class="navbar navbar-dark bg-danger mb-4">
+    <div class="container">
+      <a class="navbar-brand" href="index.html">
+        <i class="fas fa-palette me-2"></i>MoMA Art Collection
+      </a>
+    </div>
+  </nav>
+  <div class="container">
+    <h2 class="mb-4">About This App</h2>
+    <p><strong>Description:</strong> This application provides a search interface for the MoMA Art Collection. It supports all CRUD operations on artworks and includes pagination, and search/filtering.</p>
+    <p><strong>How It Works:</strong> On startup, the server loads the complete Artworks.json into an in-memory MongoDB instance. The REST API uses endpoints for listing, creating, updating, deleting, and searching artworks.</p>
+    <p><strong>Technologies:</strong>
+      <ul>
+        <li><strong>Backend:</strong> Node.js, Express.js, mongodb-memory-server</li>
+        <li><strong>Frontend:</strong> HTML5, Bootstrap 5</li>
+      </ul>
+    </p>
+    <p><strong>Known Weaknesses:</strong>
+      <ul>
+        <li>When the database is restarted it is not persistent and needs to be created on every startup.</li>
+        <li>No authenication or role based control.</li>
+      </ul>
+    </p>
+    <p><strong>Alternative Approaches & Enhancements:</strong>
+      <ul>
+        <li>Persist data by using a cloud based database hosting platform.</li>
+        <li>use some type of API authenication method like JWT.</li>
+        <li>Use React to build the frontend.</li>
+      </ul>
+    </p>
+  </div>
+</body>
+</html>
