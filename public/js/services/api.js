@@ -1,59 +1,45 @@
-/* API Service for MoMA Art Collection using AJAX */
+/* API Service for MoMA Art Collection */
 
 const Api = {
-  // Debug mode toggle
+  // Debug toggle
   DEBUG: true,
   
-  /**
-   * Log debug messages
-   */
-  logDebug(message, data) {
-    if (this.DEBUG) {
-      console.log(`[API Debug] ${message}`);
-      if (data !== undefined) {
-        console.log(data);
-      }
-    }
-  },
-  
-  /**
-   * Log errors
-   */
-  logError(message, error) {
-    console.error(`[API Error] ${message}`);
-    if (error) {
-      console.error(error);
-    }
-  },
-  
-  /**
-   * Create a new XMLHttpRequest with Promise wrapper
-   */
+  // Ajax request with Promise
   ajaxRequest(method, url, data = null) {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
+      xhr.timeout = 30000;
+      
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const response = JSON.parse(xhr.responseText);
+              resolve(response);
+            } catch (error) {
+              reject(new Error('Error parsing response: ' + error.message));
+            }
+          } else {
+            reject(new Error(`Request failed with status: ${xhr.status} ${xhr.statusText}`));
+          }
+        }
+      };
+      
+      xhr.ontimeout = function() {
+        reject(new Error('Request timed out'));
+      };
+      
+      xhr.onerror = function() {
+        reject(new Error('Network error occurred'));
+      };
+      
       xhr.open(method, url, true);
       
       if (method !== 'GET' && data) {
         xhr.setRequestHeader('Content-Type', 'application/json');
       }
       
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const response = JSON.parse(xhr.responseText);
-            resolve(response);
-          } catch (error) {
-            reject(new Error('Error parsing response'));
-          }
-        } else {
-          reject(new Error(`Request failed with status: ${xhr.status}`));
-        }
-      };
-      
-      xhr.onerror = () => {
-        reject(new Error('Network error occurred'));
-      };
+      xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
       
       if (method === 'GET' || !data) {
         xhr.send();
@@ -63,96 +49,69 @@ const Api = {
     });
   },
   
-  /**
-   * Fetch artworks with pagination (READ)
-   */
+  // Get artworks with pagination
   async getArtworks(page = 1, limit = 12) {
-    this.logDebug(`Getting artworks page ${page} with limit ${limit}`);
-    
     try {
       return await this.ajaxRequest('GET', `/api/artworks?page=${page}&limit=${limit}`);
     } catch (error) {
-      this.logError('Failed to get artworks', error);
+      console.error(`[API Error] Failed to get artworks`, error);
       throw error;
     }
   },
   
-  /**
-   * Fetch artwork by ID (READ)
-   */
+  // Get artwork by ID
   async getArtworkById(id) {
-    this.logDebug(`Getting artwork with ID: ${id}`);
-    
     try {
       return await this.ajaxRequest('GET', `/api/artworks/${id}`);
     } catch (error) {
-      this.logError(`Failed to get artwork with ID ${id}`, error);
+      console.error(`[API Error] Failed to get artwork with ID ${id}`, error);
       throw error;
     }
   },
   
-  /**
-   * Create new artwork (CREATE)
-   */
+  // Create new artwork
   async createArtwork(artworkData) {
-    this.logDebug(`Creating new artwork: ${artworkData.Title}`, artworkData);
-    
     try {
       return await this.ajaxRequest('POST', '/api/artworks', artworkData);
     } catch (error) {
-      this.logError('Failed to create artwork', error);
+      console.error('[API Error] Failed to create artwork', error);
       throw error;
     }
   },
   
-  /**
-   * Update artwork (UPDATE)
-   */
+  // Update existing artwork
   async updateArtwork(id, artworkData) {
-    this.logDebug(`Updating artwork with ID: ${id}`, artworkData);
-    
     try {
       return await this.ajaxRequest('PUT', `/api/artworks/${id}`, artworkData);
     } catch (error) {
-      this.logError(`Failed to update artwork with ID ${id}`, error);
+      console.error(`[API Error] Failed to update artwork with ID ${id}`, error);
       throw error;
     }
   },
   
-  /**
-   * Delete artwork (DELETE)
-   */
+  // Delete artwork
   async deleteArtwork(id) {
-    this.logDebug(`Deleting artwork with ID: ${id}`);
-    
     try {
       return await this.ajaxRequest('DELETE', `/api/artworks/${id}`);
     } catch (error) {
-      this.logError(`Failed to delete artwork with ID ${id}`, error);
+      console.error(`[API Error] Failed to delete artwork with ID ${id}`, error);
       throw error;
     }
   },
   
-  /**
-   * Search artworks with advanced filtering
-   */
+  // Search artworks with filters
   async searchArtworks(params) {
-    // Handle different param formats
     let queryParams = new URLSearchParams();
     
     if (typeof params === 'string') {
-      // If params is a string, use as query
       queryParams.append('q', params);
     } else {
-      // Add query if provided
       if (params.q && params.q.trim() !== '') {
         queryParams.append('q', params.q.trim());
       } else if (params.department || params.classification) {
-        // If no query but has filters, use wildcard
         queryParams.append('q', '*');
       }
       
-      // Add filters if provided
       if (params.field && params.field !== 'all') {
         queryParams.append('field', params.field);
       }
@@ -166,56 +125,35 @@ const Api = {
       }
     }
     
-    // If no parameters, use default wildcard query
     if (queryParams.toString() === '') {
       queryParams.append('q', '*');
     }
-    
-    const searchQuery = typeof params === 'object' ? (params.q || '') : params;
-    this.logDebug(`Searching for: "${searchQuery}"`);
     
     try {
       const url = `/api/search?${queryParams.toString()}`;
       return await this.ajaxRequest('GET', url);
     } catch (error) {
-      this.logError(`Search failed`, error);
+      console.error(`[API Error] Search failed`, error);
       throw error;
     }
   },
   
-  /**
-   * Get filter options (hardcoded for now)
-   */
+  // Get filter options
   async getFilterOptions() {
-    this.logDebug('Getting filter options');
-    
     try {
-      // Hardcoded values since endpoint isn't available
+      return await this.ajaxRequest('GET', '/api/filters');
+    } catch (error) {
+      // Fallback to hardcoded values
       return {
         departments: [
-          'Architecture & Design',
-          'Drawings',
-          'Film',
-          'Media and Performance',
-          'Painting & Sculpture',
-          'Photography',
-          'Prints & Illustrated Books'
+          'Architecture & Design', 'Drawings', 'Film', 'Media and Performance',
+          'Painting & Sculpture', 'Photography', 'Prints & Illustrated Books'
         ],
         classifications: [
-          'Architecture',
-          'Design',
-          'Drawing',
-          'Film',
-          'Installation',
-          'Painting',
-          'Photography',
-          'Print',
-          'Sculpture'
+          'Architecture', 'Design', 'Drawing', 'Film', 'Installation',
+          'Painting', 'Photography', 'Print', 'Sculpture'
         ]
       };
-    } catch (error) {
-      this.logError('Failed to get filter options', error);
-      throw error;
     }
   }
 };

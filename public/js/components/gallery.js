@@ -4,202 +4,83 @@ import Api from '../services/api.js';
 const Gallery = {
   currentPage: 1,
   totalPages: 1,
-  showingFavorites: false,
+  isShowingFavorites: false, // Track if we're showing favorites view
   
-  // Initialize gallery
+  // Initialize gallery and load initial artworks
   async init() {
-    this.initFavorites();
     await this.loadArtworks(1);
-    this.addCreateButton();
-    this.addFavoritesToggle();
+    this.addGalleryHeader();
   },
   
-  // Initialize favorites from localStorage
-  initFavorites() {
-    if (!localStorage.getItem('favorites')) {
-      localStorage.setItem('favorites', JSON.stringify([]));
-    }
-  },
-  
-  // Get favorites from localStorage
-  getFavorites() {
-    return JSON.parse(localStorage.getItem('favorites') || '[]');
-  },
-  
-  // Add artwork to favorites
-  addToFavorites(artworkId) {
-    const favorites = this.getFavorites();
-    if (!favorites.includes(artworkId)) {
-      favorites.push(artworkId);
-      localStorage.setItem('favorites', JSON.stringify(favorites));
-      return true;
-    }
-    return false;
-  },
-  
-  // Remove artwork from favorites
-  removeFromFavorites(artworkId) {
-    let favorites = this.getFavorites();
-    const initialLength = favorites.length;
-    favorites = favorites.filter(id => id !== artworkId);
-    localStorage.setItem('favorites', JSON.stringify(favorites));
-    return initialLength !== favorites.length;
-  },
-  
-  // Check if artwork is in favorites
-  isFavorite(artworkId) {
-    const favorites = this.getFavorites();
-    return favorites.includes(artworkId);
-  },
-  
-  // Toggle artwork favorite status
-  toggleFavorite(artworkId) {
-    if (this.isFavorite(artworkId)) {
-      return this.removeFromFavorites(artworkId);
-    } else {
-      return this.addToFavorites(artworkId);
-    }
-  },
-  
-  // Add favorites toggle button
-  addFavoritesToggle() {
-    const container = document.querySelector('#mainGallery h2').parentNode;
-    
-    if (container) {
-      const favoritesToggle = document.createElement('button');
-      favoritesToggle.id = 'favoritesToggle';
-      favoritesToggle.className = 'btn btn-outline-danger ms-2';
-      favoritesToggle.innerHTML = '<i class="fas fa-heart me-1"></i>My Favorites';
-      
-      const createBtn = document.getElementById('createArtworkBtn');
-      if (createBtn) {
-        createBtn.parentNode.insertBefore(favoritesToggle, createBtn);
-      } else {
-        container.appendChild(favoritesToggle);
-      }
-      
-      document.getElementById('favoritesToggle').addEventListener('click', () => {
-        this.toggleFavoritesView();
-      });
-    }
-  },
-  
-  // Toggle between all artworks and favorites
-  async toggleFavoritesView() {
-    this.showingFavorites = !this.showingFavorites;
-    
-    const favoritesToggle = document.getElementById('favoritesToggle');
-    if (favoritesToggle) {
-      if (this.showingFavorites) {
-        favoritesToggle.className = 'btn btn-danger ms-2';
-        favoritesToggle.innerHTML = '<i class="fas fa-list me-1"></i>Show All';
-        
-        const favorites = this.getFavorites();
-        if (favorites.length === 0) {
-          this.renderEmptyFavorites();
-          return;
-        }
-        
-        await this.loadFavoriteArtworks();
-      } else {
-        favoritesToggle.className = 'btn btn-outline-danger ms-2';
-        favoritesToggle.innerHTML = '<i class="fas fa-heart me-1"></i>My Favorites';
-        await this.loadArtworks(1);
-      }
-    }
-    
-    // Update gallery title
-    const title = document.querySelector('#mainGallery h2');
-    if (title) {
-      title.textContent = this.showingFavorites ? 'My Favorite Artworks' : 'Artwork Gallery';
-    }
-  },
-  
-  // Show message when no favorites
-  renderEmptyFavorites() {
-    const container = document.getElementById('artworksContainer');
-    const pagination = document.getElementById('pagination');
-    
-    if (container) {
-      container.innerHTML = `
-        <div class="col-12 text-center">
-          <div class="my-5 py-5">
-            <i class="fas fa-heart-broken text-muted" style="font-size: 4rem;"></i>
-            <h3 class="mt-3">No Favorite Artworks</h3>
-            <p class="text-muted">You haven't added any artworks to your favorites yet.</p>
-            <p>Click the heart icon on any artwork to add it to your favorites.</p>
-          </div>
-        </div>
-      `;
-    }
-    
-    if (pagination) {
-      pagination.innerHTML = '';
-    }
-  },
-  
-  // Load favorite artworks
-  async loadFavoriteArtworks() {
-    const spinner = document.getElementById('spinner');
-    if (spinner) spinner.style.display = 'flex';
-    
-    const favorites = this.getFavorites();
-    const artworks = [];
-    
-    // Get each favorite artwork
-    for (const id of favorites) {
-      try {
-        const artwork = await Api.getArtworkById(id);
-        artworks.push(artwork);
-      } catch (error) {
-        console.error(`Error fetching favorite artwork ${id}:`, error);
-      }
-    }
-    
-    this.renderArtworks(artworks);
-    
-    // Hide pagination for favorites
-    const pagination = document.getElementById('pagination');
-    if (pagination) {
-      pagination.innerHTML = '';
-    }
-    
-    if (spinner) spinner.style.display = 'none';
-  },
-  
-  // Add create artwork button
-  addCreateButton() {
+  // Add gallery header with buttons
+  addGalleryHeader() {
     const container = document.querySelector('#mainGallery h2');
-    if (container) {
-      const buttonContainer = document.createElement('div');
-      buttonContainer.className = 'd-flex justify-content-between align-items-center mb-4';
-      
-      const title = container.textContent;
-      container.textContent = '';
-      
-      buttonContainer.innerHTML = `
-        <h2>${title}</h2>
-        <div>
-          <button id="createArtworkBtn" class="btn btn-success">
-            <i class="fas fa-plus-circle me-2"></i>Add New Artwork
-          </button>
-        </div>
+    if (!container) return;
+    
+    const buttonContainer = document.createElement('div');
+    buttonContainer.className = 'd-flex justify-content-between align-items-center mb-4';
+    
+    const title = container.textContent;
+    container.textContent = '';
+    
+    // Get saved favorites
+    let favorites = this.getFavorites();
+    
+    // Create header with buttons
+    buttonContainer.innerHTML = `
+      <h2>${title}</h2>
+      <div class="d-flex">
+        <button id="favoritesBtn" class="btn ${this.isShowingFavorites ? 'btn-warning' : 'btn-outline-warning'} me-2">
+          <i class="fas fa-star me-1"></i>${this.isShowingFavorites ? 'Show All Artworks' : 'Favorites'}
+        </button>
+        <button id="createArtworkBtn" class="btn btn-success">
+          <i class="fas fa-plus-circle me-1"></i>Add New Artwork
+        </button>
+      </div>
+    `;
+    
+    container.parentNode.insertBefore(buttonContainer, container);
+    container.remove();
+    
+    // Add button listeners
+    document.getElementById('createArtworkBtn').addEventListener('click', () => {
+      this.showForm('create');
+    });
+    
+    document.getElementById('favoritesBtn').addEventListener('click', () => {
+      this.toggleFavoritesView();
+    });
+  },
+  
+  // Toggle between favorites and all artworks views
+  async toggleFavoritesView() {
+    this.isShowingFavorites = !this.isShowingFavorites;
+    
+    // Update button appearance
+    const favoritesBtn = document.getElementById('favoritesBtn');
+    if (favoritesBtn) {
+      favoritesBtn.innerHTML = `
+        <i class="fas fa-star me-1"></i>${this.isShowingFavorites ? 'Show All Artworks' : 'Favorites'}
       `;
-      
-      container.parentNode.insertBefore(buttonContainer, container);
-      container.remove();
-      
-      document.getElementById('createArtworkBtn').addEventListener('click', () => {
-        this.showForm('create');
-      });
+      favoritesBtn.classList.toggle('btn-warning', this.isShowingFavorites);
+      favoritesBtn.classList.toggle('btn-outline-warning', !this.isShowingFavorites);
+    }
+    
+    const pagination = document.getElementById('pagination');
+    if (pagination) {
+      pagination.style.display = this.isShowingFavorites ? 'none' : 'flex';
+    }
+    
+    // Load appropriate content
+    if (this.isShowingFavorites) {
+      await this.showFavorites();
+    } else {
+      await this.loadArtworks(1);
     }
   },
   
   // Load artworks with pagination
   async loadArtworks(page, limit = 12) {
-    const spinner = document.getElementById('spinner');
-    if (spinner) spinner.style.display = 'flex';
-    
     const data = await Api.getArtworks(page, limit);
     
     this.currentPage = data.currentPage;
@@ -208,51 +89,90 @@ const Gallery = {
     this.renderArtworks(data.artworks);
     this.renderPagination();
     
-    if (spinner) spinner.style.display = 'none';
+    // Reset favorites state
+    this.isShowingFavorites = false;
+  
+  },
+  
+  // Get favorites from localStorage
+  getFavorites() {
+    const savedFavorites = localStorage.getItem('artworkFavorites');
+    return savedFavorites ? JSON.parse(savedFavorites) : [];
+  },
+  
+  // Show favorites view
+  async showFavorites() {
+    const favorites = this.getFavorites();
+    const container = document.getElementById('artworksContainer');
+    if (!container) return;
+    
+    // Show empty state if no favorites
+    if (favorites.length === 0) {
+      container.innerHTML = `
+        <div class="col-12 text-center py-5">
+            <h4>No Favorite Artworks</h4>
+            <p class="text-muted">You haven't added any artworks to your favorites yet.</p>
+        </div>
+      `;
+      
+      // Add browse button listener
+      document.getElementById('browseArtworksBtn')?.addEventListener('click', () => {
+        this.toggleFavoritesView();
+      });
+      return;
+    }
+    
+    // Fetch and display favorite artworks
+    const artworks = [];
+    for (const id of favorites) {
+      const artwork = await Api.getArtworkById(id);
+      artworks.push(artwork);
+    }
+    
+    this.renderArtworks(artworks, true);
   },
   
   // Render artworks to the page
-  renderArtworks(artworks) {
+  renderArtworks(artworks, isFavoritesView = false) {
     const container = document.getElementById('artworksContainer');
     if (!container) return;
     
     container.innerHTML = '';
     
-    if (artworks.length === 0) {
-      container.innerHTML = '<div class="col-12 text-center"><p class="my-5">No artworks found.</p></div>';
-      return;
-    }
+    // Get favorites for highlighting
+    const favorites = this.getFavorites();
     
+    // Create artwork cards
     artworks.forEach(artwork => {
       const artistText = artwork.Artist && Array.isArray(artwork.Artist) 
         ? artwork.Artist.join(', ') 
         : (artwork.Artist || 'Unknown Artist');
         
       const imageUrl = artwork.ImageURL || 'https://placehold.co/400x400?text=No+Image';
-      const isFavorite = this.isFavorite(artwork.ObjectID);
-      const favoriteClass = isFavorite ? 'text-danger' : 'text-muted';
+      const isFavorite = favorites.includes(artwork.ObjectID);
       
+      // Create card element
       const artworkCard = document.createElement('div');
       artworkCard.className = 'col-md-4 col-lg-3 mb-4';
       artworkCard.innerHTML = `
-        <div class="card h-100">
-          <div class="position-relative">
-            <div class="favorite-badge position-absolute top-0 end-0 m-2">
-              <button class="btn btn-light btn-sm rounded-circle favorite-toggle" data-id="${artwork.ObjectID}">
-                <i class="fas fa-heart ${favoriteClass}"></i>
-              </button>
-            </div>
-            <img src="${imageUrl}" class="card-img-top" alt="${artwork.Title}" 
-                 onerror="this.src='https://placehold.co/400x400?text=Image+Error';">
+        <div class="card h-100 ${isFavorite ? 'border-warning' : ''}">
+          <div class="card-img-top position-relative">
+            <img src="${imageUrl}" class="img-fluid w-100" alt="${artwork.Title}" 
+                 onerror="this.src='https://placehold.co/400x400?text=Image+Error';" style="height: 200px; object-fit: cover;">
+            ${isFavorite ? '<div class="favorite-badge"><i class="fas fa-star text-warning"></i></div>' : ''}
           </div>
           <div class="card-body">
             <h5 class="card-title">${artwork.Title || 'Untitled'}</h5>
             <p class="card-text text-muted">${artistText}</p>
             <p class="card-text"><small>${artwork.Date || 'No date'}</small></p>
           </div>
-          <div class="card-footer bg-transparent border-top-0 text-center">
+          <div class="card-footer bg-transparent border-top-0 d-flex justify-content-between">
             <button class="btn btn-sm btn-outline-primary view-artwork" data-id="${artwork.ObjectID}">
-              View Details
+              <i class="fas fa-eye me-1"></i>View
+            </button>
+            <button class="btn btn-sm ${isFavorite ? 'btn-warning' : 'btn-outline-warning'} favorite-btn" 
+                    data-id="${artwork.ObjectID}" title="${isFavorite ? 'Remove from favorites' : 'Add to favorites'}">
+              <i class="fas fa-star"></i>
             </button>
           </div>
         </div>
@@ -261,77 +181,99 @@ const Gallery = {
       container.appendChild(artworkCard);
     });
     
-    this.addViewListeners();
-    this.addFavoriteListeners();
+    this.addCardListeners();
   },
   
-  // Add favorite button event listeners
-  addFavoriteListeners() {
-    document.querySelectorAll('.favorite-toggle').forEach(button => {
-      button.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        const artworkId = parseInt(e.currentTarget.dataset.id);
-        const toggled = this.toggleFavorite(artworkId);
-        
-        // Update icon
-        const icon = e.currentTarget.querySelector('i');
-        if (icon) {
-          if (toggled) {
-            // Was added to favorites
-            if (icon.classList.contains('text-muted')) {
-              icon.classList.remove('text-muted');
-              icon.classList.add('text-danger');
-              
-              // Show a brief animation
-              button.classList.add('favorite-animation');
-              setTimeout(() => {
-                button.classList.remove('favorite-animation');
-              }, 500);
-              
-              this.showNotification('Added to favorites', 'success');
-            } else {
-              // Was removed from favorites
-              icon.classList.remove('text-danger');
-              icon.classList.add('text-muted');
-              
-              this.showNotification('Removed from favorites', 'info');
-              
-              // If we're in favorites view, refresh the view
-              if (this.showingFavorites) {
-                this.loadFavoriteArtworks();
-              }
-            }
-          }
-        }
-      });
-    });
-  },
-  
-  // Add view button event listeners
-  addViewListeners() {
+  // Add event listeners to card buttons
+  addCardListeners() {
+    // View button listeners
     document.querySelectorAll('.view-artwork').forEach(button => {
       button.addEventListener('click', async (e) => {
         const artworkId = e.currentTarget.dataset.id;
         this.viewDetails(artworkId);
       });
     });
+    
+    // Favorite button listeners
+    document.querySelectorAll('.favorite-btn').forEach(button => {
+      button.addEventListener('click', (e) => {
+        const artworkId = parseInt(e.currentTarget.dataset.id);
+        this.toggleFavorite(artworkId, e.currentTarget);
+      });
+    });
+  },
+  
+  // Toggle favorite status for an artwork
+  toggleFavorite(artworkId, button) {
+    let favorites = this.getFavorites();
+    const index = favorites.indexOf(artworkId);
+    const isFavoritesView = this.isShowingFavorites;
+    
+    if (index === -1) {
+      // Add to favorites
+      favorites.push(artworkId);
+      button.classList.remove('btn-outline-warning');
+      button.classList.add('btn-warning');
+      button.title = 'Remove from favorites';
+      
+      // Update card appearance
+      const card = button.closest('.card');
+      if (card) {
+        card.classList.add('border-warning');
+        
+        if (!card.querySelector('.favorite-badge')) {
+          const imgContainer = card.querySelector('.card-img-top');
+          const badge = document.createElement('div');
+          badge.className = 'favorite-badge';
+          badge.innerHTML = '<i class="fas fa-star text-warning"></i>';
+          imgContainer.appendChild(badge);
+        }
+      }
+    } else {
+      // Remove from favorites
+      favorites.splice(index, 1);
+      button.classList.remove('btn-warning');
+      button.classList.add('btn-outline-warning');
+      button.title = 'Add to favorites';
+      
+      // Update card appearance
+      const card = button.closest('.card');
+      if (card) {
+        card.classList.remove('border-warning');
+        const badge = card.querySelector('.favorite-badge');
+        if (badge) badge.remove();
+      }
+      
+      // Remove card from view if in favorites view
+      if (isFavoritesView) {
+        const cardContainer = button.closest('.col-md-4');
+        if (cardContainer) {
+          cardContainer.classList.add('fade-out');
+          setTimeout(() => {
+            cardContainer.remove();
+            
+            // Check if no more favorites
+            if (favorites.length === 0) {
+              this.showFavorites();
+            }
+          }, 300);
+        }
+      }
+    }
+    
+    // Save to localStorage
+    localStorage.setItem('artworkFavorites', JSON.stringify(favorites));
   },
   
   // View artwork details
   async viewDetails(artworkId) {
-    const spinner = document.getElementById('spinner');
-    if (spinner) spinner.style.display = 'flex';
-    
     const artwork = await Api.getArtworkById(artworkId);
     this.showModal(artwork);
-    
-    if (spinner) spinner.style.display = 'none';
   },
   
   // Show artwork details in modal
   showModal(artwork) {
+    // Create modal if it doesn't exist
     if (!document.getElementById('artworkModal')) {
       const modalDiv = document.createElement('div');
       modalDiv.className = 'modal fade';
@@ -341,6 +283,7 @@ const Gallery = {
       document.body.appendChild(modalDiv);
     }
     
+    // Format artwork data
     const artistText = artwork.Artist && Array.isArray(artwork.Artist) 
       ? artwork.Artist.join(', ') 
       : (artwork.Artist || 'Unknown Artist');
@@ -354,10 +297,12 @@ const Gallery = {
       : (artwork.ArtistBio || '');
       
     const imageUrl = artwork.ImageURL || 'https://placehold.co/600x600?text=No+Image';
-    const isFavorite = this.isFavorite(artwork.ObjectID);
-    const favoriteClass = isFavorite ? 'text-danger' : 'text-muted';
-    const favoriteText = isFavorite ? 'Remove from Favorites' : 'Add to Favorites';
     
+    // Check favorite status
+    const favorites = this.getFavorites();
+    const isFavorite = favorites.includes(artwork.ObjectID);
+    
+    // Build modal HTML
     const modal = document.getElementById('artworkModal');
     modal.innerHTML = `
       <div class="modal-dialog modal-lg">
@@ -369,12 +314,11 @@ const Gallery = {
           <div class="modal-body">
             <div class="row">
               <div class="col-md-6 mb-3">
-                <img src="${imageUrl}" class="img-fluid mb-3" alt="${artwork.Title}" 
-                     onerror="this.src='https://placehold.co/600x600?text=Image+Error';">
-                     
-                <button id="favoriteBtn" class="btn btn-outline-danger w-100" data-id="${artwork.ObjectID}">
-                  <i class="fas fa-heart ${favoriteClass} me-2"></i>${favoriteText}
-                </button>
+                <div class="position-relative">
+                  <img src="${imageUrl}" class="img-fluid mb-3 rounded" alt="${artwork.Title}" 
+                       onerror="this.src='https://placehold.co/600x600?text=Image+Error';">
+                  ${isFavorite ? '<div class="position-absolute top-0 end-0 p-2"><i class="fas fa-star text-warning fa-2x"></i></div>' : ''}
+                </div>
               </div>
               <div class="col-md-6">
                 <h6 class="mb-3">${artistText}</h6>
@@ -390,65 +334,108 @@ const Gallery = {
               </div>
             </div>
           </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-outline-primary edit-artwork-btn" data-id="${artwork.ObjectID}">
-              <i class="fas fa-edit me-1"></i>Edit
-            </button>
-            <button type="button" class="btn btn-outline-danger delete-artwork-btn" data-id="${artwork.ObjectID}">
-              <i class="fas fa-trash-alt me-1"></i>Delete
-            </button>
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <div class="modal-footer d-flex justify-content-between">
+            <div>
+              <button type="button" class="btn ${isFavorite ? 'btn-warning' : 'btn-outline-warning'} favorite-modal-btn" data-id="${artwork.ObjectID}">
+                <i class="fas fa-star me-1"></i>${isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
+              </button>
+            </div>
+            <div>
+              <button type="button" class="btn btn-outline-primary edit-artwork-btn" data-id="${artwork.ObjectID}">
+                <i class="fas fa-edit me-1"></i>Edit
+              </button>
+              <button type="button" class="btn btn-outline-danger delete-artwork-btn" data-id="${artwork.ObjectID}">
+                <i class="fas fa-trash-alt me-1"></i>Delete
+              </button>
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
           </div>
         </div>
       </div>
     `;
     
+    // Show modal and add event listeners
     const bsModal = new bootstrap.Modal(modal);
     bsModal.show();
     
-    // Add favorite button listener
-    document.getElementById('favoriteBtn').addEventListener('click', (e) => {
-      const artworkId = parseInt(e.currentTarget.dataset.id);
-      const toggled = this.toggleFavorite(artworkId);
-      
-      if (toggled) {
-        const icon = e.currentTarget.querySelector('i');
-        const isFavoriteNow = this.isFavorite(artworkId);
-        
-        if (isFavoriteNow) {
-          icon.classList.remove('text-muted');
-          icon.classList.add('text-danger');
-          e.currentTarget.innerHTML = `<i class="fas fa-heart text-danger me-2"></i>Remove from Favorites`;
-          this.showNotification('Added to favorites', 'success');
-        } else {
-          icon.classList.remove('text-danger');
-          icon.classList.add('text-muted');
-          e.currentTarget.innerHTML = `<i class="fas fa-heart text-muted me-2"></i>Add to Favorites`;
-          this.showNotification('Removed from favorites', 'info');
-        }
-        
-        // If we're in favorites view, refresh the view
-        if (this.showingFavorites) {
-          modal.addEventListener('hidden.bs.modal', () => {
-            this.loadFavoriteArtworks();
-          }, { once: true });
-        }
-      }
-    });
-    
+    // Edit button listener
     modal.querySelector('.edit-artwork-btn').addEventListener('click', () => {
       bsModal.hide();
       this.showForm('edit', artwork);
     });
     
+    // Delete button listener
     modal.querySelector('.delete-artwork-btn').addEventListener('click', () => {
       bsModal.hide();
       this.showDeleteConfirm(artwork);
     });
+    
+    // Favorite button listener
+    modal.querySelector('.favorite-modal-btn').addEventListener('click', (e) => {
+      const artworkId = parseInt(e.currentTarget.dataset.id);
+      let favorites = this.getFavorites();
+      const index = favorites.indexOf(artworkId);
+    
+      
+      // Save to localStorage
+      localStorage.setItem('artworkFavorites', JSON.stringify(favorites));
+      
+      // Update card in the background if visible
+      this.updateCardAfterFavoriteToggle(artworkId, index === -1, bsModal);
+    });
+  },
+  
+  // Update card appearance after favorite toggle in modal
+  updateCardAfterFavoriteToggle(artworkId, isAdding, bsModal) {
+    const card = document.querySelector(`.card .favorite-btn[data-id="${artworkId}"]`);
+    if (!card) return;
+    
+    const container = card.closest('.card');
+    if (!container) return;
+    
+    if (isAdding) {
+      // Item was added to favorites
+      container.classList.add('border-warning');
+      const imgContainer = container.querySelector('.card-img-top');
+      if (imgContainer && !imgContainer.querySelector('.favorite-badge')) {
+        const badge = document.createElement('div');
+        badge.className = 'favorite-badge';
+        badge.innerHTML = '<i class="fas fa-star text-warning"></i>';
+        imgContainer.appendChild(badge);
+      }
+      card.classList.remove('btn-outline-warning');
+      card.classList.add('btn-warning');
+    } else {
+      // Item was removed from favorites
+      container.classList.remove('border-warning');
+      const badge = container.querySelector('.favorite-badge');
+      if (badge) badge.remove();
+      card.classList.remove('btn-warning');
+      card.classList.add('btn-outline-warning');
+      
+      // Handle card removal in favorites view
+      if (this.isShowingFavorites) {
+        const cardContainer = container.closest('.col-md-4');
+        if (cardContainer) {
+          cardContainer.classList.add('fade-out');
+          setTimeout(() => {
+            cardContainer.remove();
+            
+            // Check if there are no more favorites
+            const favorites = this.getFavorites();
+            if (favorites.length === 0) {
+              bsModal.hide();
+              this.showFavorites();
+            }
+          }, 300);
+        }
+      }
+    }
   },
   
   // Show artwork form for create/edit
   showForm(mode, artwork = null) {
+    // Create modal if it doesn't exist
     if (!document.getElementById('artworkFormModal')) {
       const modalDiv = document.createElement('div');
       modalDiv.className = 'modal fade';
@@ -462,11 +449,13 @@ const Gallery = {
     const title = isCreate ? 'Add New Artwork' : 'Edit Artwork';
     const submitText = isCreate ? 'Create' : 'Update';
     
+    // Set form data
     const formData = artwork || {};
     const artistValue = formData.Artist && Array.isArray(formData.Artist) 
       ? formData.Artist.join(', ') 
       : (formData.Artist || '');
     
+    // Build form HTML
     const modal = document.getElementById('artworkFormModal');
     modal.innerHTML = `
       <div class="modal-dialog modal-lg">
@@ -572,17 +561,21 @@ const Gallery = {
       </div>
     `;
     
+    // Show modal and add event listeners
     const bsModal = new bootstrap.Modal(modal);
     bsModal.show();
     
+    // Save button listener
     document.getElementById('saveArtworkBtn').addEventListener('click', async () => {
       const form = document.getElementById('artworkForm');
       
+      // Simple form validation
       if (!form.checkValidity()) {
         form.classList.add('was-validated');
         return;
       }
       
+      // Process form data
       const formData = new FormData(form);
       const artworkData = {};
       
@@ -590,13 +583,12 @@ const Gallery = {
         artworkData[key] = value.trim();
       }
       
+      // Process artist field as array
       if (artworkData.Artist) {
         artworkData.Artist = artworkData.Artist.split(',').map(artist => artist.trim()).filter(a => a);
       }
       
-      const spinner = document.getElementById('spinner');
-      if (spinner) spinner.style.display = 'flex';
-      
+      // Save or update artwork
       if (isCreate) {
         await Api.createArtwork(artworkData);
       } else {
@@ -607,23 +599,18 @@ const Gallery = {
       
       bsModal.hide();
       
-      this.showNotification(
-        isCreate ? 'Artwork created successfully' : 'Artwork updated successfully',
-        'success'
-      );
-      
-      if (this.showingFavorites) {
-        await this.loadFavoriteArtworks();
+      // Refresh view
+      if (this.isShowingFavorites) {
+        await this.showFavorites();
       } else {
         await this.loadArtworks(this.currentPage);
       }
-      
-      if (spinner) spinner.style.display = 'none';
     });
   },
   
   // Show delete confirmation
   showDeleteConfirm(artwork) {
+    // Create modal if it doesn't exist
     if (!document.getElementById('deleteConfirmModal')) {
       const modalDiv = document.createElement('div');
       modalDiv.className = 'modal fade';
@@ -637,6 +624,7 @@ const Gallery = {
       ? artwork.Artist.join(', ') 
       : (artwork.Artist || 'Unknown Artist');
     
+    // Build confirmation modal
     const modal = document.getElementById('deleteConfirmModal');
     modal.innerHTML = `
       <div class="modal-dialog">
@@ -664,82 +652,48 @@ const Gallery = {
     const bsModal = new bootstrap.Modal(modal);
     bsModal.show();
     
+    // Delete button listener
     document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
-      const spinner = document.getElementById('spinner');
-      if (spinner) spinner.style.display = 'flex';
-      
       await Api.deleteArtwork(artwork.ObjectID);
       
-      // Also remove from favorites if present
-      if (this.isFavorite(artwork.ObjectID)) {
-        this.removeFromFavorites(artwork.ObjectID);
+      // Remove from favorites if present
+      const savedFavorites = localStorage.getItem('artworkFavorites');
+      if (savedFavorites) {
+        let favorites = JSON.parse(savedFavorites);
+        const index = favorites.indexOf(artwork.ObjectID);
+        if (index > -1) {
+          favorites.splice(index, 1);
+          localStorage.setItem('artworkFavorites', JSON.stringify(favorites));
+        }
       }
       
       bsModal.hide();
       
-      this.showNotification(
-        'Artwork deleted successfully',
-        'success'
-      );
-      
-      if (this.showingFavorites) {
-        await this.loadFavoriteArtworks();
+      // Refresh view
+      if (this.isShowingFavorites) {
+        await this.showFavorites();
       } else {
         await this.loadArtworks(this.currentPage);
       }
-      
-      if (spinner) spinner.style.display = 'none';
     });
   },
   
-  // Show notification
-  showNotification(message, type = 'info') {
-    if (!document.getElementById('notificationContainer')) {
-      const container = document.createElement('div');
-      container.id = 'notificationContainer';
-      container.className = 'position-fixed bottom-0 end-0 p-3';
-      container.style.zIndex = '9999';
-      document.body.appendChild(container);
-    }
-    
-    const container = document.getElementById('notificationContainer');
-    const id = 'notification-' + Date.now();
-    
-    const notification = document.createElement('div');
-    notification.id = id;
-    notification.className = `toast align-items-center text-white bg-${type} border-0`;
-    notification.setAttribute('role', 'alert');
-    notification.setAttribute('aria-live', 'assertive');
-    notification.setAttribute('aria-atomic', 'true');
-    
-    notification.innerHTML = `
-      <div class="d-flex">
-        <div class="toast-body">
-          ${message}
-        </div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-      </div>
-    `;
-    
-    container.appendChild(notification);
-    
-    const toastInstance = new bootstrap.Toast(notification, {
-      delay: 5000
-    });
-    toastInstance.show();
-    
-    notification.addEventListener('hidden.bs.toast', () => {
-      notification.remove();
-    });
-  },
-  
-  // Render pagination
+  // Render pagination controls
   renderPagination() {
     const pagination = document.getElementById('pagination');
     if (!pagination) return;
     
+    // Hide pagination in favorites view
+    if (this.isShowingFavorites) {
+      pagination.style.display = 'none';
+      return;
+    } else {
+      pagination.style.display = 'flex';
+    }
+    
     pagination.innerHTML = '';
     
+    // Add previous button
     const prevLi = document.createElement('li');
     prevLi.className = `page-item ${this.currentPage === 1 ? 'disabled' : ''}`;
     prevLi.innerHTML = `<a class="page-link" href="#" aria-label="Previous">
@@ -747,6 +701,7 @@ const Gallery = {
     </a>`;
     pagination.appendChild(prevLi);
     
+    // Add page numbers
     const startPage = Math.max(1, this.currentPage - 2);
     const endPage = Math.min(this.totalPages, startPage + 4);
     
@@ -757,6 +712,7 @@ const Gallery = {
       pagination.appendChild(pageLi);
     }
     
+    // Add next button
     const nextLi = document.createElement('li');
     nextLi.className = `page-item ${this.currentPage === this.totalPages ? 'disabled' : ''}`;
     nextLi.innerHTML = `<a class="page-link" href="#" aria-label="Next">
@@ -774,16 +730,19 @@ const Gallery = {
       link.addEventListener('click', (e) => {
         e.preventDefault();
         
+        // Previous page
         if (index === 0 && self.currentPage > 1) {
           self.loadArtworks(self.currentPage - 1);
           return;
         }
         
+        // Next page
         if (index === document.querySelectorAll('.page-link').length - 1 && self.currentPage < self.totalPages) {
           self.loadArtworks(self.currentPage + 1);
           return;
         }
         
+        // Specific page number
         if (index > 0 && index < document.querySelectorAll('.page-link').length - 1) {
           const pageNumber = parseInt(link.textContent);
           if (pageNumber !== self.currentPage) {

@@ -1,4 +1,4 @@
-// Server setup with Express and MongoDB in-memory
+//setup with Express and MongoDB in-memory
 const express = require('express');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const { MongoClient } = require('mongodb');

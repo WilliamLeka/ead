@@ -1,245 +1,125 @@
-/**
- * API service for MoMA Art Collection
- * Handles communication with the server
- */
+/* API service for MoMA Art Collection */
 
 const ApiService = {
-  // Debug mode toggle
   DEBUG: true,
   
-  /**
-   * Log debug messages
-   */
-  logDebug(message, data) {
-    if (this.DEBUG) {
-      console.log(`[API Debug] ${message}`);
-      if (data !== undefined) {
-        console.log(data);
-      }
-    }
+  // Log debug message
+  logDebug(m, d) {
+    if (this.DEBUG) console.log(`[API Debug] ${m}`, d);
   },
   
-  /**
-   * Log errors
-   */
-  logError(message, error) {
-    console.error(`[API Error] ${message}`);
-    if (error) {
-      console.error(error);
-    }
+  // Log error message
+  logError(m, e) {
+    console.error(`[API Error] ${m}`, e);
   },
   
-  /**
-   * Fetch artworks with pagination (READ)
-   */
+  // Get artwork list with pagination
   async getArtworks(page = 1, limit = 12) {
-    this.logDebug(`Getting artworks page ${page} with limit ${limit}`);
-    
     try {
-      const response = await fetch(`/api/artworks?page=${page}&limit=${limit}`);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch artworks: ${response.status} ${response.statusText}`);
-      }
-      
-      return await response.json();
-    } catch (error) {
-      this.logError('Failed to get artworks', error);
-      throw error;
+      const res = await fetch(`/api/artworks?page=${page}&limit=${limit}`);
+      if (!res.ok) throw new Error(`Failed: ${res.status}`);
+      return await res.json();
+    } catch (e) {
+      this.logError('Failed to get artworks', e);
+      throw e;
     }
   },
   
-  /**
-   * Fetch artwork by ID (READ)
-   */
+  // Get specific artwork by ID
   async getArtworkById(id) {
-    this.logDebug(`Getting artwork with ID: ${id}`);
-    
     try {
-      const response = await fetch(`/api/artworks/${id}`);
-      
-      if (!response.ok) {
-        throw new Error('Artwork not found');
-      }
-      
-      return await response.json();
-    } catch (error) {
-      this.logError(`Failed to get artwork with ID ${id}`, error);
-      throw error;
+      const res = await fetch(`/api/artworks/${id}`);
+      if (!res.ok) throw new Error('Artwork not found');
+      return await res.json();
+    } catch (e) {
+      this.logError(`Failed to get artwork ${id}`, e);
+      throw e;
     }
   },
   
-  /**
-   * Create new artwork (CREATE)
-   */
-  async createArtwork(artworkData) {
-    this.logDebug(`Creating new artwork: ${artworkData.Title}`, artworkData);
-    
+  // Create new artwork
+  async createArtwork(data) {
     try {
-      const response = await fetch('/api/artworks', {
+      const res = await fetch('/api/artworks', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(artworkData)
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create artwork');
-      }
-      
-      return await response.json();
-    } catch (error) {
-      this.logError('Failed to create artwork', error);
-      throw error;
+      if (!res.ok) throw new Error('Create failed');
+      return await res.json();
+    } catch (e) {
+      this.logError('Failed to create artwork', e);
+      throw e;
     }
   },
   
-  /**
-   * Update artwork (UPDATE)
-   */
-  async updateArtwork(id, artworkData) {
-    this.logDebug(`Updating artwork with ID: ${id}`, artworkData);
-    
+  // Update existing artwork
+  async updateArtwork(id, data) {
     try {
-      const response = await fetch(`/api/artworks/${id}`, {
+      const res = await fetch(`/api/artworks/${id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(artworkData)
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update artwork');
-      }
-      
-      return await response.json();
-    } catch (error) {
-      this.logError(`Failed to update artwork with ID ${id}`, error);
-      throw error;
+      if (!res.ok) throw new Error('Update failed');
+      return await res.json();
+    } catch (e) {
+      this.logError(`Failed to update artwork ${id}`, e);
+      throw e;
     }
   },
   
-  /**
-   * Delete artwork (DELETE)
-   */
+  // Delete artwork
   async deleteArtwork(id) {
-    this.logDebug(`Deleting artwork with ID: ${id}`);
-    
     try {
-      const response = await fetch(`/api/artworks/${id}`, {
-        method: 'DELETE'
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete artwork');
-      }
-      
-      return await response.json();
-    } catch (error) {
-      this.logError(`Failed to delete artwork with ID ${id}`, error);
-      throw error;
+      const res = await fetch(`/api/artworks/${id}`, {method: 'DELETE'});
+      if (!res.ok) throw new Error('Delete failed');
+      return await res.json();
+    } catch (e) {
+      this.logError(`Failed to delete artwork ${id}`, e);
+      throw e;
     }
   },
   
-  /**
-   * Search artworks 
-   */
+  // Search for artworks with filters
   async searchArtworks(params) {
     try {
-      // Handle different param formats
-      let queryParams = new URLSearchParams();
+      let qp = new URLSearchParams();
       
       if (typeof params === 'string') {
-        // If params is a string, use as query
-        queryParams.append('q', params);
+        qp.append('q', params);
       } else {
-        // Add query if provided
-        if (params.q && params.q.trim() !== '') {
-          queryParams.append('q', params.q.trim());
-        } else if (params.department || params.classification) {
-          // If no query but has filters, use wildcard
-          queryParams.append('q', '*');
-        }
+        if (params.q?.trim()) qp.append('q', params.q.trim());
+        else if (params.department || params.classification) qp.append('q', '*');
         
-        // Add filters if provided
-        if (params.field && params.field !== 'all') {
-          queryParams.append('field', params.field);
-        }
-        
-        if (params.department && params.department.trim() !== '') {
-          queryParams.append('department', params.department);
-        }
-        
-        if (params.classification && params.classification.trim() !== '') {
-          queryParams.append('classification', params.classification);
-        }
+        if (params.field && params.field !== 'all') qp.append('field', params.field);
+        if (params.department?.trim()) qp.append('department', params.department);
+        if (params.classification?.trim()) qp.append('classification', params.classification);
       }
       
-      // If no parameters, use default wildcard query
-      if (queryParams.toString() === '') {
-        queryParams.append('q', '*');
-      }
+      if (qp.toString() === '') qp.append('q', '*');
       
-      const searchQuery = params.q || '';
-      this.logDebug(`Searching for: "${searchQuery}" in field: ${params.field || 'all'}`);
-      this.logDebug(`Filters: department=${params.department || 'any'}, classification=${params.classification || 'any'}`);
-      
-      // Make request
-      const url = `/api/search?${queryParams.toString()}`;
-      this.logDebug(`Making search request to: ${url}`);
-      
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        throw new Error(`Search failed: ${response.status} ${response.statusText}`);
-      }
-      
-      return await response.json();
-    } catch (error) {
-      this.logError(`Search failed`, error);
-      throw error;
+      const res = await fetch(`/api/search?${qp.toString()}`);
+      if (!res.ok) throw new Error(`Search failed: ${res.status}`);
+      return await res.json();
+    } catch (e) {
+      this.logError(`Search failed`, e);
+      throw e;
     }
   },
   
-  /**
-   * Get filter options (hardcoded for now)
-   */
+  // Get filter options for search
   async getFilterOptions() {
-    this.logDebug('Getting filter options');
-    
-    try {
-      // Hardcoded values since endpoint isn't available
-      return {
-        departments: [
-          'Architecture & Design',
-          'Drawings',
-          'Film',
-          'Media and Performance',
-          'Painting & Sculpture',
-          'Photography',
-          'Prints & Illustrated Books'
-        ],
-        classifications: [
-          'Architecture',
-          'Design',
-          'Drawing',
-          'Film',
-          'Installation',
-          'Painting',
-          'Photography',
-          'Print',
-          'Sculpture'
-        ]
-      };
-    } catch (error) {
-      this.logError('Failed to get filter options', error);
-      throw error;
-    }
+    return {
+      departments: [
+        'Architecture & Design', 'Drawings', 'Film', 'Media and Performance',
+        'Painting & Sculpture', 'Photography', 'Prints & Illustrated Books'
+      ],
+      classifications: [
+        'Architecture', 'Design', 'Drawing', 'Film', 'Installation',
+        'Painting', 'Photography', 'Print', 'Sculpture'
+      ]
+    };
   }
 };
 
