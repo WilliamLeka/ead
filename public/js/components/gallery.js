@@ -4,11 +4,167 @@ import Api from '../services/api.js';
 const Gallery = {
   currentPage: 1,
   totalPages: 1,
+  showingFavorites: false,
   
   // Initialize gallery
   async init() {
+    this.initFavorites();
     await this.loadArtworks(1);
     this.addCreateButton();
+    this.addFavoritesToggle();
+  },
+  
+  // Initialize favorites from localStorage
+  initFavorites() {
+    if (!localStorage.getItem('favorites')) {
+      localStorage.setItem('favorites', JSON.stringify([]));
+    }
+  },
+  
+  // Get favorites from localStorage
+  getFavorites() {
+    return JSON.parse(localStorage.getItem('favorites') || '[]');
+  },
+  
+  // Add artwork to favorites
+  addToFavorites(artworkId) {
+    const favorites = this.getFavorites();
+    if (!favorites.includes(artworkId)) {
+      favorites.push(artworkId);
+      localStorage.setItem('favorites', JSON.stringify(favorites));
+      return true;
+    }
+    return false;
+  },
+  
+  // Remove artwork from favorites
+  removeFromFavorites(artworkId) {
+    let favorites = this.getFavorites();
+    const initialLength = favorites.length;
+    favorites = favorites.filter(id => id !== artworkId);
+    localStorage.setItem('favorites', JSON.stringify(favorites));
+    return initialLength !== favorites.length;
+  },
+  
+  // Check if artwork is in favorites
+  isFavorite(artworkId) {
+    const favorites = this.getFavorites();
+    return favorites.includes(artworkId);
+  },
+  
+  // Toggle artwork favorite status
+  toggleFavorite(artworkId) {
+    if (this.isFavorite(artworkId)) {
+      return this.removeFromFavorites(artworkId);
+    } else {
+      return this.addToFavorites(artworkId);
+    }
+  },
+  
+  // Add favorites toggle button
+  addFavoritesToggle() {
+    const container = document.querySelector('#mainGallery h2').parentNode;
+    
+    if (container) {
+      const favoritesToggle = document.createElement('button');
+      favoritesToggle.id = 'favoritesToggle';
+      favoritesToggle.className = 'btn btn-outline-danger ms-2';
+      favoritesToggle.innerHTML = '<i class="fas fa-heart me-1"></i>My Favorites';
+      
+      const createBtn = document.getElementById('createArtworkBtn');
+      if (createBtn) {
+        createBtn.parentNode.insertBefore(favoritesToggle, createBtn);
+      } else {
+        container.appendChild(favoritesToggle);
+      }
+      
+      document.getElementById('favoritesToggle').addEventListener('click', () => {
+        this.toggleFavoritesView();
+      });
+    }
+  },
+  
+  // Toggle between all artworks and favorites
+  async toggleFavoritesView() {
+    this.showingFavorites = !this.showingFavorites;
+    
+    const favoritesToggle = document.getElementById('favoritesToggle');
+    if (favoritesToggle) {
+      if (this.showingFavorites) {
+        favoritesToggle.className = 'btn btn-danger ms-2';
+        favoritesToggle.innerHTML = '<i class="fas fa-list me-1"></i>Show All';
+        
+        const favorites = this.getFavorites();
+        if (favorites.length === 0) {
+          this.renderEmptyFavorites();
+          return;
+        }
+        
+        await this.loadFavoriteArtworks();
+      } else {
+        favoritesToggle.className = 'btn btn-outline-danger ms-2';
+        favoritesToggle.innerHTML = '<i class="fas fa-heart me-1"></i>My Favorites';
+        await this.loadArtworks(1);
+      }
+    }
+    
+    // Update gallery title
+    const title = document.querySelector('#mainGallery h2');
+    if (title) {
+      title.textContent = this.showingFavorites ? 'My Favorite Artworks' : 'Artwork Gallery';
+    }
+  },
+  
+  // Show message when no favorites
+  renderEmptyFavorites() {
+    const container = document.getElementById('artworksContainer');
+    const pagination = document.getElementById('pagination');
+    
+    if (container) {
+      container.innerHTML = `
+        <div class="col-12 text-center">
+          <div class="my-5 py-5">
+            <i class="fas fa-heart-broken text-muted" style="font-size: 4rem;"></i>
+            <h3 class="mt-3">No Favorite Artworks</h3>
+            <p class="text-muted">You haven't added any artworks to your favorites yet.</p>
+            <p>Click the heart icon on any artwork to add it to your favorites.</p>
+          </div>
+        </div>
+      `;
+    }
+    
+    if (pagination) {
+      pagination.innerHTML = '';
+    }
+  },
+  
+  // Load favorite artworks
+  async loadFavoriteArtworks() {
+    const spinner = document.getElementById('spinner');
+    if (spinner) spinner.style.display = 'flex';
+    
+    const favorites = this.getFavorites();
+    const artworks = [];
+    
+    // Get each favorite artwork
+    for (const id of favorites) {
+      try {
+        const artwork = await Api.getArtworkById(id);
+        artworks.push(artwork);
+      } catch (error) {
+        console.error(`Error fetching favorite artwork ${id}:`, error);
+      }
+    }
+    
+    this.renderArtworks(artworks);
+    
+    // Hide pagination for favorites
+    const pagination = document.getElementById('pagination');
+    if (pagination) {
+      pagination.innerHTML = '';
+    }
+    
+    if (spinner) spinner.style.display = 'none';
   },
   
   // Add create artwork button
@@ -23,9 +179,11 @@ const Gallery = {
       
       buttonContainer.innerHTML = `
         <h2>${title}</h2>
-        <button id="createArtworkBtn" class="btn btn-success">
-          <i class="fas fa-plus-circle me-2"></i>Add New Artwork
-        </button>
+        <div>
+          <button id="createArtworkBtn" class="btn btn-success">
+            <i class="fas fa-plus-circle me-2"></i>Add New Artwork
+          </button>
+        </div>
       `;
       
       container.parentNode.insertBefore(buttonContainer, container);
@@ -71,12 +229,19 @@ const Gallery = {
         : (artwork.Artist || 'Unknown Artist');
         
       const imageUrl = artwork.ImageURL || 'https://placehold.co/400x400?text=No+Image';
+      const isFavorite = this.isFavorite(artwork.ObjectID);
+      const favoriteClass = isFavorite ? 'text-danger' : 'text-muted';
       
       const artworkCard = document.createElement('div');
       artworkCard.className = 'col-md-4 col-lg-3 mb-4';
       artworkCard.innerHTML = `
         <div class="card h-100">
-          <div class="card-img-top">
+          <div class="position-relative">
+            <div class="favorite-badge position-absolute top-0 end-0 m-2">
+              <button class="btn btn-light btn-sm rounded-circle favorite-toggle" data-id="${artwork.ObjectID}">
+                <i class="fas fa-heart ${favoriteClass}"></i>
+              </button>
+            </div>
             <img src="${imageUrl}" class="card-img-top" alt="${artwork.Title}" 
                  onerror="this.src='https://placehold.co/400x400?text=Image+Error';">
           </div>
@@ -97,6 +262,51 @@ const Gallery = {
     });
     
     this.addViewListeners();
+    this.addFavoriteListeners();
+  },
+  
+  // Add favorite button event listeners
+  addFavoriteListeners() {
+    document.querySelectorAll('.favorite-toggle').forEach(button => {
+      button.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const artworkId = parseInt(e.currentTarget.dataset.id);
+        const toggled = this.toggleFavorite(artworkId);
+        
+        // Update icon
+        const icon = e.currentTarget.querySelector('i');
+        if (icon) {
+          if (toggled) {
+            // Was added to favorites
+            if (icon.classList.contains('text-muted')) {
+              icon.classList.remove('text-muted');
+              icon.classList.add('text-danger');
+              
+              // Show a brief animation
+              button.classList.add('favorite-animation');
+              setTimeout(() => {
+                button.classList.remove('favorite-animation');
+              }, 500);
+              
+              this.showNotification('Added to favorites', 'success');
+            } else {
+              // Was removed from favorites
+              icon.classList.remove('text-danger');
+              icon.classList.add('text-muted');
+              
+              this.showNotification('Removed from favorites', 'info');
+              
+              // If we're in favorites view, refresh the view
+              if (this.showingFavorites) {
+                this.loadFavoriteArtworks();
+              }
+            }
+          }
+        }
+      });
+    });
   },
   
   // Add view button event listeners
@@ -144,6 +354,9 @@ const Gallery = {
       : (artwork.ArtistBio || '');
       
     const imageUrl = artwork.ImageURL || 'https://placehold.co/600x600?text=No+Image';
+    const isFavorite = this.isFavorite(artwork.ObjectID);
+    const favoriteClass = isFavorite ? 'text-danger' : 'text-muted';
+    const favoriteText = isFavorite ? 'Remove from Favorites' : 'Add to Favorites';
     
     const modal = document.getElementById('artworkModal');
     modal.innerHTML = `
@@ -158,6 +371,10 @@ const Gallery = {
               <div class="col-md-6 mb-3">
                 <img src="${imageUrl}" class="img-fluid mb-3" alt="${artwork.Title}" 
                      onerror="this.src='https://placehold.co/600x600?text=Image+Error';">
+                     
+                <button id="favoriteBtn" class="btn btn-outline-danger w-100" data-id="${artwork.ObjectID}">
+                  <i class="fas fa-heart ${favoriteClass} me-2"></i>${favoriteText}
+                </button>
               </div>
               <div class="col-md-6">
                 <h6 class="mb-3">${artistText}</h6>
@@ -188,6 +405,36 @@ const Gallery = {
     
     const bsModal = new bootstrap.Modal(modal);
     bsModal.show();
+    
+    // Add favorite button listener
+    document.getElementById('favoriteBtn').addEventListener('click', (e) => {
+      const artworkId = parseInt(e.currentTarget.dataset.id);
+      const toggled = this.toggleFavorite(artworkId);
+      
+      if (toggled) {
+        const icon = e.currentTarget.querySelector('i');
+        const isFavoriteNow = this.isFavorite(artworkId);
+        
+        if (isFavoriteNow) {
+          icon.classList.remove('text-muted');
+          icon.classList.add('text-danger');
+          e.currentTarget.innerHTML = `<i class="fas fa-heart text-danger me-2"></i>Remove from Favorites`;
+          this.showNotification('Added to favorites', 'success');
+        } else {
+          icon.classList.remove('text-danger');
+          icon.classList.add('text-muted');
+          e.currentTarget.innerHTML = `<i class="fas fa-heart text-muted me-2"></i>Add to Favorites`;
+          this.showNotification('Removed from favorites', 'info');
+        }
+        
+        // If we're in favorites view, refresh the view
+        if (this.showingFavorites) {
+          modal.addEventListener('hidden.bs.modal', () => {
+            this.loadFavoriteArtworks();
+          }, { once: true });
+        }
+      }
+    });
     
     modal.querySelector('.edit-artwork-btn').addEventListener('click', () => {
       bsModal.hide();
@@ -365,7 +612,11 @@ const Gallery = {
         'success'
       );
       
-      await this.loadArtworks(this.currentPage);
+      if (this.showingFavorites) {
+        await this.loadFavoriteArtworks();
+      } else {
+        await this.loadArtworks(this.currentPage);
+      }
       
       if (spinner) spinner.style.display = 'none';
     });
@@ -419,6 +670,11 @@ const Gallery = {
       
       await Api.deleteArtwork(artwork.ObjectID);
       
+      // Also remove from favorites if present
+      if (this.isFavorite(artwork.ObjectID)) {
+        this.removeFromFavorites(artwork.ObjectID);
+      }
+      
       bsModal.hide();
       
       this.showNotification(
@@ -426,7 +682,11 @@ const Gallery = {
         'success'
       );
       
-      await this.loadArtworks(this.currentPage);
+      if (this.showingFavorites) {
+        await this.loadFavoriteArtworks();
+      } else {
+        await this.loadArtworks(this.currentPage);
+      }
       
       if (spinner) spinner.style.display = 'none';
     });

@@ -3,42 +3,146 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>About This App</title>
+  <title>About MoMA Art Collection App</title>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
   <link href="css/styles.css" rel="stylesheet">
 </head>
 <body>
+  <!-- Navigation Bar -->
   <nav class="navbar navbar-dark bg-danger mb-4">
     <div class="container">
       <a class="navbar-brand" href="index.html">
         <i class="fas fa-palette me-2"></i>MoMA Art Collection
       </a>
+      <ul class="navbar-nav ms-auto flex-row">
+        <li class="nav-item mx-2">
+          <a class="nav-link active" href="index.html">Gallery</a>
+        </li>
+        <li class="nav-item mx-2">
+          <a class="nav-link" href="about.html">About</a>
+        </li>
+      </ul>
     </div>
   </nav>
+
+  <!-- Main Content -->
   <div class="container">
-    <h2 class="mb-4">About This App</h2>
-    <p><strong>Description:</strong> This application provides a search interface for the MoMA Art Collection. It supports all CRUD operations on artworks and includes pagination, and search/filtering.</p>
-    <p><strong>How It Works:</strong> On startup, the server loads the complete Artworks.json into an in-memory MongoDB instance. The REST API uses endpoints for listing, creating, updating, deleting, and searching artworks.</p>
-    <p><strong>Technologies:</strong>
-      <ul>
-        <li><strong>Backend:</strong> Node.js, Express.js, mongodb-memory-server</li>
-        <li><strong>Frontend:</strong> HTML5, Bootstrap 5</li>
-      </ul>
-    </p>
-    <p><strong>Known Weaknesses:</strong>
-      <ul>
-        <li>When the database is restarted it is not persistent and needs to be created on every startup.</li>
-        <li>No authenication or role based control.</li>
-      </ul>
-    </p>
-    <p><strong>Alternative Approaches & Enhancements:</strong>
-      <ul>
-        <li>Persist data by using a cloud based database hosting platform.</li>
-        <li>use some type of API authenication method like JWT.</li>
-        <li>Use React to build the frontend.</li>
-      </ul>
-    </p>
+    <div class="card mb-4">
+      <div class="card-body">
+        <h2 class="card-title mb-4">About MoMA Art Collection App</h2>
+        
+        <section class="mb-4">
+          <h3>1. Application Description</h3>
+          <p>This application provides a complete interface for browsing, searching, and managing the Museum of Modern Art (MoMA) collection. It supports all CRUD operations (Create, Read, Update, Delete) on artwork records with an intuitive user interface.</p>
+          <p>The application allows users to:</p>
+          <ul>
+            <li>Browse through the complete MoMA art collection with pagination</li>
+            <li>Search artworks by title, artist, department, classification, and other criteria</li>
+            <li>View detailed information about each artwork</li>
+            <li>Add new artworks to the collection</li>
+            <li>Edit existing artwork information</li>
+            <li>Delete artworks from the collection</li>
+          </ul>
+        </section>
+        
+        <section class="mb-4">
+          <h3>2. How It Works</h3>
+          <p>The application follows a client-server architecture that uses RESTful principles for communication:</p>
+          
+          <h4>Server-side:</h4>
+          <ol>
+            <li>When the server starts, it loads the MoMA art collection from a JSON file into an in-memory MongoDB database.</li>
+            <li>The server exposes RESTful API endpoints to handle client requests for artwork data.</li>
+            <li>Express.js routes are defined to handle CRUD operations on the artworks collection.</li>
+            <li>The server processes search queries with filtering capabilities for advanced searching.</li>
+          </ol>
+          
+          <h4>Client-side:</h4>
+          <ol>
+            <li>The client interface is built with HTML, CSS, and JavaScript following a modular approach.</li>
+            <li>AJAX (Asynchronous JavaScript and XML) is used to communicate with the server without page refreshes.</li>
+            <li>The UI is responsive and provides real-time feedback for all user actions.</li>
+            <li>Client modules (Gallery, Search) handle different aspects of the application functionality.</li>
+          </ol>
+          
+          <h4>Communication Flow:</h4>
+          <ol>
+            <li>User initiates an action (search, page change, view details, etc.)</li>
+            <li>Client JavaScript creates an AJAX request to the appropriate server endpoint</li>
+            <li>Server processes the request and performs database operations</li>
+            <li>Server sends a JSON response back to the client</li>
+            <li>Client processes the response and updates the UI accordingly</li>
+          </ol>
+        </section>
+        
+        <section class="mb-4">
+          <h3>3. Technologies Used</h3>
+          
+          <h4>Backend Technologies:</h4>
+          <ul>
+            <li><strong>Node.js:</strong> JavaScript runtime environment for server-side code</li>
+            <li><strong>Express.js:</strong> Web framework for handling HTTP requests and routes</li>
+            <li><strong>MongoDB:</strong> NoSQL database for storing artwork data</li>
+            <li><strong>mongodb-memory-server:</strong> In-memory MongoDB implementation for development/testing</li>
+            <li><strong>RESTful API:</strong> Architectural style for client-server communication</li>
+          </ul>
+          
+          <h4>Frontend Technologies:</h4>
+          <ul>
+            <li><strong>HTML5:</strong> Markup language for structuring the web application</li>
+            <li><strong>CSS3:</strong> Styling language for the visual presentation</li>
+            <li><strong>JavaScript (ES6+):</strong> Programming language for client-side functionality</li>
+            <li><strong>AJAX:</strong> Technique for asynchronous web applications</li>
+            <li><strong>Bootstrap 5:</strong> CSS framework for responsive design</li>
+            <li><strong>Font Awesome:</strong> Icon toolkit for enhanced UI elements</li>
+          </ul>
+        </section>
+        
+        <section class="mb-4">
+          <h3>4. Known Limitations</h3>
+          <ul>
+            <li><strong>Data Persistence:</strong> The application uses an in-memory MongoDB instance, so all data is lost when the server restarts. In a production environment, a persistent database would be necessary.</li>
+            <li><strong>Authentication:</strong> Currently, there is no user authentication or authorization system. Any user can perform all operations, which would be a security risk in a production environment.</li>
+            <li><strong>Performance:</strong> For very large datasets, the current implementation might experience performance issues, particularly with complex searches.</li>
+            <li><strong>Error Handling:</strong> While basic error handling is implemented, a more robust system would be needed for production use.</li>
+            <li><strong>Validation:</strong> More comprehensive data validation would be required for a production application.</li>
+          </ul>
+        </section>
+        
+        <section class="mb-4">
+          <h3>5. Alternative Approaches & Future Enhancements</h3>
+          <ul>
+            <li><strong>Database:</strong> Replace the in-memory MongoDB with a cloud-based solution like MongoDB Atlas or Amazon DocumentDB for persistence.</li>
+            <li><strong>Authentication:</strong> Implement JWT (JSON Web Tokens) or OAuth for secure authentication and authorization.</li>
+            <li><strong>Frontend Framework:</strong> Rewrite the frontend using a modern framework like React, Vue.js, or Angular for improved component management and state handling.</li>
+            <li><strong>Full-text Search:</strong> Implement Elasticsearch or MongoDB's Atlas Search for more powerful search capabilities.</li>
+            <li><strong>Image Handling:</strong> Add support for image uploads with cloud storage integration (e.g., AWS S3, Google Cloud Storage).</li>
+            <li><strong>User Profiles:</strong> Allow users to create accounts, favorite artworks, and personalize their experience.</li>
+            <li><strong>Analytics:</strong> Implement tracking for popular artworks, search terms, and user engagement patterns.</li>
+            <li><strong>APIs:</strong> Create additional API endpoints for integration with other services and applications.</li>
+          </ul>
+        </section>
+      </div>
+    </div>
   </div>
+
+  <!-- Footer -->
+  <footer class="bg-dark text-white py-4 mt-5">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-6">
+          <h5>MoMA Art Collection</h5>
+          <p>A project created for Enterprise Application Development 2025.</p>
+        </div>
+        <div class="col-md-6 text-md-end">
+          <p>Data source: <a href="https://github.com/MuseumofModernArt/collection" class="text-white" target="_blank">MoMA GitHub Repository</a></p>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
